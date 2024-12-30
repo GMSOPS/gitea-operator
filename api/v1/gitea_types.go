@@ -73,6 +73,8 @@ type GiteaSpec struct {
 
 	ClusterDomain string `json:"clusterDomain,omitempty"`
 
+	// Specify if gitea is external or should be created by operator
+	External bool `json:"external,omitempty"`
 	// SecretRef allows connecting to an external Gitea instance
 	SecretRef *corev1.SecretReference `json:"secretRef,omitempty"`
 }

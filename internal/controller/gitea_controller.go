@@ -131,24 +131,30 @@ func (r *GiteaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	var gitea hyperv1.Gitea
 	if err := r.Get(ctx, req.NamespacedName, &gitea); err != nil {
 		if errors.IsNotFound(err) {
+			logger.V(1).Info("Gitea resource not found, ignoring since object must be deleted")
 			return ctrl.Result{}, nil
 		}
-		logger.Error(err, "failed to get Gitea")
+		logger.Error(err, "Failed to get Gitea resource")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	var giteaClient *hclient.Client
 	var err error
 
-	// Determine whether to use internal or external Gitea
-	if gitea.Spec.SecretRef != nil {
+	// Determine whether to use external or internal Gitea
+	if gitea.Spec.External {
 		// External Gitea
+		if gitea.Spec.SecretRef == nil {
+			logger.Error(nil, "SecretRef is required for external Gitea but is missing")
+			return ctrl.Result{}, fmt.Errorf("SecretRef is required for external Gitea")
+		}
+
 		giteaClient, err = hclient.BuildFromSecret(ctx, r.Client, gitea.Spec.SecretRef.Name, gitea.Namespace)
 		if err != nil {
-			logger.Error(err, "failed to build Gitea client from SecretRef")
+			logger.Error(err, "Failed to build Gitea client from SecretRef")
 			return ctrl.Result{}, err
 		}
-		logger.Info("Using external Gitea instance")
+		logger.Info("Using external Gitea instance", "secretName", gitea.Spec.SecretRef.Name)
 	} else {
 		// Internal Gitea
 		giteaClient, _, err = hclient.Build(ctx, r.Client, &hyperv1.InstanceType{
@@ -156,10 +162,10 @@ func (r *GiteaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			Namespace: gitea.Namespace,
 		}, gitea.Namespace)
 		if err != nil {
-			logger.Error(err, "failed to build internal Gitea client")
+			logger.Error(err, "Failed to build internal Gitea client")
 			return ctrl.Result{}, err
 		}
-		logger.Info("Using internal Gitea instance")
+		logger.Info("Using internal Gitea instance", "instanceName", gitea.Name)
 	}
 
 	if giteaClient == nil {
@@ -170,17 +176,19 @@ func (r *GiteaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// Verify connection to Gitea instance
 	_, _, err = giteaClient.Client.ServerVersion()
 	if err != nil {
-		logger.Error(err, "failed to communicate with Gitea instance")
+		logger.Error(err, "Failed to communicate with Gitea instance")
 		return ctrl.Result{}, err
 	}
-	logger.Info("Successfully connected to Gitea instance")
+	logger.Info("Successfully connected to Gitea instance", "namespace", gitea.Namespace, "name", gitea.Name)
 
 	// Call the existing reconcile logic for Gitea
 	res, err := r.reconcileGitea(ctx, &gitea)
 	if err != nil {
+		logger.Error(err, "Reconciliation failed for Gitea")
 		return res, err
 	}
 
+	logger.Info("Reconciliation completed successfully for Gitea", "namespace", gitea.Namespace, "name", gitea.Name)
 	return ctrl.Result{}, nil
 }
 
@@ -192,15 +200,39 @@ func (r *GiteaReconciler) setCondition(ctx context.Context, gitea *hyperv1.Gitea
 	condition := metav1.Condition{Type: typeName, Status: status, Reason: reason, Message: message}
 	meta.SetStatusCondition(&gitea.Status.Conditions, condition)
 
+	// Attempt to update the status on the API server
 	if err := r.Client.Status().Update(ctx, gitea); err != nil {
-		logger.Error(err, "Gitea status update failed.")
+		logger.Error(err, "Failed to update Gitea status", "conditionType", typeName, "status", status, "reason", reason, "message", message)
+		return fmt.Errorf("failed to update status condition: %w", err)
 	}
+
+	logger.Info("Successfully updated Gitea status condition", "conditionType", typeName, "status", status, "reason", reason, "message", message)
 	return nil
 }
 
 //nolint:unparam,gocyclo
 func (r *GiteaReconciler) reconcileGitea(ctx context.Context, gitea *hyperv1.Gitea) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
+
+	if gitea.Spec.External {
+		logger.Info("External Gitea specified, validating instance")
+
+		// Validate connection to the external Gitea API
+		if err := r.validateExternalGitea(ctx, gitea); err != nil {
+			logger.Error(err, "Validation failed for external Gitea instance")
+			if err := r.setCondition(ctx, gitea, "InstanceReady", "False", "ValidationFailed", "Failed to connect to external Gitea API"); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+
+		logger.Info("External Gitea instance validated successfully")
+		if err := r.setCondition(ctx, gitea, "InstanceReady", "True", "ValidationSuccess", "External Gitea API validated successfully"); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	if err := r.upsertPG(ctx, gitea); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -633,6 +665,37 @@ echo '==== END GITEA CONFIGURATION ===='`,
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// Function to validate external Gitea instance connectivity
+func (r *GiteaReconciler) validateExternalGitea(ctx context.Context, gitea *hyperv1.Gitea) error {
+	logger := log.FromContext(ctx)
+
+	giteaClient, err := hclient.BuildFromSecret(ctx, r.Client, gitea.Spec.SecretRef.Name, gitea.Namespace)
+	if err != nil {
+		logger.Error(err, "failed to build Gitea client from SecretRef")
+		if statusErr := r.setCondition(ctx, gitea, "InstanceReady", "False", "ClientError", "Failed to build Gitea client"); statusErr != nil {
+			logger.Error(statusErr, "failed to update status condition")
+		}
+		return fmt.Errorf("failed to build Gitea client: %w", err)
+	}
+
+	logger.Info("Validating connection to external Gitea instance")
+	_, _, err = giteaClient.Client.ServerVersion()
+	if err != nil {
+		logger.Error(err, "failed to connect to external Gitea API")
+		if statusErr := r.setCondition(ctx, gitea, "InstanceReady", "False", "ConnectionError", "Failed to connect to external Gitea API"); statusErr != nil {
+			logger.Error(statusErr, "failed to update status condition")
+		}
+		return fmt.Errorf("failed to connect to external Gitea API: %w", err)
+	}
+
+	logger.Info("Successfully connected to external Gitea API")
+	if statusErr := r.setCondition(ctx, gitea, "InstanceReady", "True", "ConnectionSuccess", "External Gitea API validated successfully"); statusErr != nil {
+		logger.Error(statusErr, "failed to update status condition")
+	}
+
+	return nil
 }
 
 func labels(name string) map[string]string {
@@ -2404,14 +2467,30 @@ func (r *GiteaReconciler) upsertGiteaIngress(ctx context.Context, gitea *hyperv1
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GiteaReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	builder := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 3}).
-		Owns(&corev1.Service{}).
-		Owns(&corev1.Secret{}).
-		Owns(&corev1.ServiceAccount{}).
-		Owns(&zalandov1.Postgresql{}).
-		Owns(&appsv1.StatefulSet{}).
-		Owns(&netv1.Ingress{}).
-		For(&hyperv1.Gitea{}).
-		Complete(r)
+		For(&hyperv1.Gitea{})
+
+	if !r.isExternal() {
+		// Add watches for internal resource management
+		builder = builder.
+			Owns(&corev1.Service{}).
+			Owns(&corev1.Secret{}).
+			Owns(&zalandov1.Postgresql{}).
+			Owns(&appsv1.StatefulSet{}).
+			Owns(&netv1.Ingress{})
+	} else {
+		// Minimal watches for external instance validation
+		builder = builder.
+			Owns(&corev1.Secret{})
+	}
+
+	return builder.Complete(r)
+}
+
+// Helper function to determine if the operator is managing an external instance
+func (r *GiteaReconciler) isExternal() bool {
+	// Logic to check if external Gitea mode is enabled globally or based on specific resource
+	// For now, assume a global variable or configuration
+	return false // Replace with actual logic to detect external mode
 }

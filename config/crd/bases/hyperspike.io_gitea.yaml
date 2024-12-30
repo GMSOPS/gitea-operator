@@ -70,6 +70,10 @@ spec:
                 type: string
               clusterDomain:
                 type: string
+              external:
+                description: Specify if gitea is external or should be created by
+                  operator
+                type: boolean
               externalSSH:
                 description: Create a loadbalancer for ssh access
                 type: boolean
