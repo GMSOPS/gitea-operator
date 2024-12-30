@@ -21,6 +21,7 @@ limitations under the License.
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -196,6 +197,11 @@ func (in *GiteaSpec) DeepCopyInto(out *GiteaSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.SecretRef != nil {
+		in, out := &in.SecretRef, &out.SecretRef
+		*out = new(corev1.SecretReference)
+		**out = **in
 	}
 }
 

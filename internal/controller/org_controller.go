@@ -21,14 +21,14 @@ import (
 	"time"
 
 	g "code.gitea.io/sdk/gitea"
-	hclient "hyperspike.io/gitea-operator/internal/client"
+	hclient "github.com/GMSOPS/gitea-operator/internal/client"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	hyperv1 "hyperspike.io/gitea-operator/api/v1"
+	hyperv1 "github.com/GMSOPS/gitea-operator/api/v1"
 )
 
 // OrgReconciler reconciles a Org object

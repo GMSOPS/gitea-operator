@@ -23,7 +23,7 @@ import (
 	"io"
 	"time"
 
-	hyperspikeClient "hyperspike.io/gitea-operator/internal/client"
+	hyperspikeClient "github.com/GMSOPS/gitea-operator/internal/client"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	hyperv1 "hyperspike.io/gitea-operator/api/v1"
+	hyperv1 "github.com/GMSOPS/gitea-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

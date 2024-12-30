@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	hyperspikeiov1 "hyperspike.io/gitea-operator/api/v1"
+	hyperspikeiov1 "github.com/GMSOPS/gitea-operator/api/v1"
 )
 
 // AuthReconciler reconciles a Auth object

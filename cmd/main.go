@@ -40,8 +40,8 @@ import (
 	zalandov1 "github.com/zalando/postgres-operator/pkg/apis/acid.zalan.do/v1"
 	valkeyv1 "hyperspike.io/valkey-operator/api/v1"
 
-	hyperspikeiov1 "hyperspike.io/gitea-operator/api/v1"
-	"hyperspike.io/gitea-operator/internal/controller"
+	hyperspikeiov1 "github.com/GMSOPS/gitea-operator/api/v1"
+	"github.com/GMSOPS/gitea-operator/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
 

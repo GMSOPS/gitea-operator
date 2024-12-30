@@ -1,4 +1,4 @@
-module hyperspike.io/gitea-operator
+module github.com/GMSOPS/gitea-operator
 
 go 1.23.4
 

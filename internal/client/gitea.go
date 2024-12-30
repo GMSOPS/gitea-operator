@@ -14,9 +14,9 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	hyperv1 "github.com/GMSOPS/gitea-operator/api/v1"
 	certv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	cmetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
-	hyperv1 "hyperspike.io/gitea-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

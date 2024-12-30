@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	hyperspikeiov1 "hyperspike.io/gitea-operator/api/v1"
+	hyperspikeiov1 "github.com/GMSOPS/gitea-operator/api/v1"
 )
 
 var _ = Describe("Repo Controller", func() {

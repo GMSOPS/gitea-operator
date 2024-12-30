@@ -21,7 +21,7 @@ import (
 	"time"
 
 	g "code.gitea.io/sdk/gitea"
-	hclient "hyperspike.io/gitea-operator/internal/client"
+	hclient "github.com/GMSOPS/gitea-operator/internal/client"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	hyperv1 "hyperspike.io/gitea-operator/api/v1"
+	hyperv1 "github.com/GMSOPS/gitea-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 

@@ -32,7 +32,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	hyperspikeiov1 "hyperspike.io/gitea-operator/api/v1"
+	hyperspikeiov1 "github.com/GMSOPS/gitea-operator/api/v1"
 	// +kubebuilder:scaffold:imports
 )
 

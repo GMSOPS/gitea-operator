@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"hyperspike.io/gitea-operator/test/utils"
+	"github.com/GMSOPS/gitea-operator/test/utils"
 )
 
 const namespace = "gitea-operator-system"

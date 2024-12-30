@@ -25,9 +25,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	hyperspikeiov1 "github.com/GMSOPS/gitea-operator/api/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	hyperspikeiov1beta1 "hyperspike.io/gitea-operator/api/v1"
 )
 
 // var _ = Describe("Gitea Controller", func() {
@@ -40,13 +40,13 @@ import (
 // 			Name:      resourceName,
 // 			Namespace: "default", // TODO(user):Modify as needed
 // 		}
-// 		gitea := &hyperspikeiov1beta1.Gitea{}
+// 		gitea := &hyperspikeiov1.Gitea{}
 
 // 		BeforeEach(func() {
 // 			By("creating the custom resource for the Kind Gitea")
 // 			err := k8sClient.Get(ctx, typeNamespacedName, gitea)
 // 			if err != nil && errors.IsNotFound(err) {
-// 				resource := &hyperspikeiov1beta1.Gitea{
+// 				resource := &hyperspikeiov1.Gitea{
 // 					ObjectMeta: metav1.ObjectMeta{
 // 						Name:      resourceName,
 // 						Namespace: "default",
@@ -59,7 +59,7 @@ import (
 
 // 		AfterEach(func() {
 // 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-// 			resource := &hyperspikeiov1beta1.Gitea{}
+// 			resource := &hyperspikeiov1.Gitea{}
 // 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 // 			Expect(err).NotTo(HaveOccurred())
 
@@ -93,21 +93,22 @@ var _ = Describe("Gitea Controller", func() {
 			Name:      resourceName,
 			Namespace: "default",
 		}
-		gitea := &hyperspikeiov1beta1.Gitea{}
+		gitea := &hyperspikeiov1.Gitea{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Gitea")
 			err := k8sClient.Get(ctx, typeNamespacedName, gitea)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &hyperspikeiov1beta1.Gitea{
+				resource := &hyperspikeiov1.Gitea{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					Spec: hyperspikeiov1beta1.GiteaSpec{
+					Spec: hyperspikeiov1.GiteaSpec{
 						// Add a secret reference for external Gitea
-						SecretRef: &hyperspikeiov1beta1.SecretRef{
-							Name: "external-gitea-secret",
+						SecretRef: &corev1.SecretReference{
+							Name:      "external-gitea-secret",
+							Namespace: "default",
 						},
 					},
 				}
@@ -117,7 +118,7 @@ var _ = Describe("Gitea Controller", func() {
 
 		AfterEach(func() {
 			By("cleaning up the specific resource instance Gitea")
-			resource := &hyperspikeiov1beta1.Gitea{}
+			resource := &hyperspikeiov1.Gitea{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -138,7 +139,7 @@ var _ = Describe("Gitea Controller", func() {
 			// Add assertions to verify external Gitea was handled correctly
 			// Example: Verify that the SecretRef was used to create the Gitea client
 			By("Verifying the external Gitea client")
-			createdResource := &hyperspikeiov1beta1.Gitea{}
+			createdResource := &hyperspikeiov1.Gitea{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, createdResource)).To(Succeed())
 			Expect(createdResource.Spec.SecretRef).NotTo(BeNil())
 			Expect(createdResource.Spec.SecretRef.Name).To(Equal("external-gitea-secret"))
@@ -146,7 +147,7 @@ var _ = Describe("Gitea Controller", func() {
 
 		It("should successfully reconcile an internal Gitea resource", func() {
 			By("Updating the resource to use internal Gitea")
-			resource := &hyperspikeiov1beta1.Gitea{}
+			resource := &hyperspikeiov1.Gitea{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			resource.Spec.SecretRef = nil // Remove SecretRef to simulate internal Gitea
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
@@ -164,7 +165,7 @@ var _ = Describe("Gitea Controller", func() {
 
 			// Add assertions to verify internal Gitea was handled correctly
 			By("Verifying the internal Gitea instance")
-			createdResource := &hyperspikeiov1beta1.Gitea{}
+			createdResource := &hyperspikeiov1.Gitea{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, createdResource)).To(Succeed())
 			Expect(createdResource.Spec.SecretRef).To(BeNil())
 		})
