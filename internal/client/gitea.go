@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -44,6 +45,48 @@ func BuildFromOrg(ctx context.Context, r rclient.Client, instance *hyperv1.OrgRe
 		org.Spec.Instance.Namespace = org.Namespace
 	}
 	return Build(ctx, r, &org.Spec.Instance, "")
+}
+
+func BuildFromSecret(ctx context.Context, r rclient.Client, secretName, namespace string) (*Client, error) {
+	logger := log.FromContext(ctx)
+
+	// Fetch the secret
+	secret := &corev1.Secret{}
+	if err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, secret); err != nil {
+		logger.Error(err, "Failed to retrieve Gitea secret", "secretName", secretName, "namespace", namespace)
+		return nil, err
+	}
+
+	// Extract connection details
+	url, ok := secret.Data["url"]
+	if !ok {
+		return nil, fmt.Errorf("missing 'url' in Gitea secret")
+	}
+	token, ok := secret.Data["token"]
+	if !ok {
+		return nil, fmt.Errorf("missing 'token' in Gitea secret")
+	}
+
+	// Initialize Gitea client
+	httpClient := httpClient(ctx, nil)
+	giteaClient, err := gitea.NewClient(string(url), gitea.SetContext(ctx), gitea.SetToken(string(token)), gitea.SetHTTPClient(httpClient))
+	if err != nil {
+		logger.Error(err, "Failed to create Gitea client", "url", string(url))
+		return nil, err
+	}
+
+	// Test the connection
+	_, _, err = giteaClient.ServerVersion()
+	if err != nil {
+		logger.Error(err, "Failed to get server version from Gitea", "url", string(url))
+		return nil, err
+	}
+
+	return &Client{
+		Client:     giteaClient,
+		httpClient: httpClient,
+		token:      string(token),
+	}, nil
 }
 
 func Build(ctx context.Context, r rclient.Client, instance *hyperv1.InstanceType, ns string) (*Client, *hyperv1.Gitea, error) {

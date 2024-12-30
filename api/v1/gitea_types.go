@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -71,6 +72,9 @@ type GiteaSpec struct {
 	CertIssuerType string `json:"certIssuerType,omitempty"`
 
 	ClusterDomain string `json:"clusterDomain,omitempty"`
+
+	// SecretRef allows connecting to an external Gitea instance
+	SecretRef *corev1.SecretReference `json:"secretRef,omitempty"`
 }
 
 type ObjectSpec struct {

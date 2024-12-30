@@ -136,6 +136,46 @@ func (r *GiteaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		logger.Error(err, "failed to get Gitea")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
+	var giteaClient *hclient.Client
+	var err error
+
+	// Determine whether to use internal or external Gitea
+	if gitea.Spec.SecretRef != nil {
+		// External Gitea
+		giteaClient, err = hclient.BuildFromSecret(ctx, r.Client, gitea.Spec.SecretRef.Name, gitea.Namespace)
+		if err != nil {
+			logger.Error(err, "failed to build Gitea client from SecretRef")
+			return ctrl.Result{}, err
+		}
+		logger.Info("Using external Gitea instance")
+	} else {
+		// Internal Gitea
+		giteaClient, _, err = hclient.Build(ctx, r.Client, &hyperv1.InstanceType{
+			Name:      gitea.Name,
+			Namespace: gitea.Namespace,
+		}, gitea.Namespace)
+		if err != nil {
+			logger.Error(err, "failed to build internal Gitea client")
+			return ctrl.Result{}, err
+		}
+		logger.Info("Using internal Gitea instance")
+	}
+
+	if giteaClient == nil {
+		logger.Info("Gitea client is not ready, requeueing")
+		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+	}
+
+	// Verify connection to Gitea instance
+	_, _, err = giteaClient.Client.ServerVersion()
+	if err != nil {
+		logger.Error(err, "failed to communicate with Gitea instance")
+		return ctrl.Result{}, err
+	}
+	logger.Info("Successfully connected to Gitea instance")
+
+	// Call the existing reconcile logic for Gitea
 	res, err := r.reconcileGitea(ctx, &gitea)
 	if err != nil {
 		return res, err
